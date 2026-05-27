@@ -1,0 +1,50 @@
+# ── Python / Caches ───────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ipynb_checkpoints/
+
+# ── Virtual Environments ──────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+pyvenv.cfg
+
+# ── Datasets (Too large for Git) ──────────────────────────────────────
+data/raw/
+data/faces/
+data/faces_fft/
+# Keep splits CSV as it defines training partitions for reproducibility
+!data/splits/
+
+# ── Model Checkpoints / Weights ──────────────────────────────────────
+checkpoints/*
+!checkpoints/.gitkeep
+*.pth
+*.pt
+*.ckpt
+
+# ── Logs ──────────────────────────────────────────────────────────────
+*.log
+logs/*
+!logs/.gitkeep
+
+# ── Flask / Web App Uploads & Temp Files ──────────────────────────────
+uploads/*
+!uploads/.gitkeep
+
+# ── Inference / XAI Results ───────────────────────────────────────────
+results/*
+!results/.gitkeep
+xai_samples/*
+!xai_samples/.gitkeep
+deepfake__1.zip
+
+# ── IDEs / System Files ───────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

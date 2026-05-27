@@ -1,0 +1,1410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AURA // Explainable Deepfake Detection Radar</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-base: #070a13;
+            --bg-surface: rgba(13, 20, 38, 0.75);
+            --bg-card: rgba(22, 30, 56, 0.85);
+            --border-color: rgba(99, 102, 241, 0.15);
+            --border-glow: rgba(99, 102, 241, 0.4);
+            
+            --primary: #6366f1; /* Indigo */
+            --primary-glow: rgba(99, 102, 241, 0.5);
+            --secondary: #d946ef; /* Magenta */
+            --secondary-glow: rgba(217, 70, 239, 0.5);
+            
+            --success: #10b981; /* Emerald */
+            --warning: #f59e0b; /* Amber */
+            --danger: #ef4444; /* Coral */
+            
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --text-dark: #6b7280;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(217, 70, 239, 0.06) 0%, transparent 45%);
+            background-attachment: fixed;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-base);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.3);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(99, 102, 241, 0.6);
+        }
+
+        header {
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(7, 10, 19, 0.8);
+            backdrop-filter: blur(12px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1.25rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-group {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            width: 2.2rem;
+            height: 2.2rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            color: #fff;
+            box-shadow: 0 0 15px var(--primary-glow);
+            letter-spacing: -1px;
+            font-size: 1.1rem;
+        }
+
+        .brand-title {
+            font-size: 1.4rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+            background: linear-gradient(to right, #fff, #99a2ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--success);
+        }
+
+        .status-badge.offline {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: currentColor;
+            box-shadow: 0 0 10px currentColor;
+            animation: pulse 1.8s infinite;
+        }
+
+        main {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem 4rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.75rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card:hover {
+            border-color: rgba(99, 102, 241, 0.3);
+            box-shadow: 0 12px 40px 0 rgba(99, 102, 241, 0.08);
+        }
+
+        .panel-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 1.25rem;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 0.75rem;
+        }
+
+        /* Upload Cards Style */
+        .upload-section-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .upload-card {
+            position: relative;
+            border: 2px dashed rgba(99, 102, 241, 0.2);
+            border-radius: 12px;
+            padding: 1.75rem 1.25rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(13, 20, 38, 0.4);
+            overflow: hidden;
+        }
+
+        .upload-card.image-card:hover, .upload-card.image-card.dragover {
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.15);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .upload-card.video-card:hover, .upload-card.video-card.dragover {
+            border-color: var(--secondary);
+            box-shadow: 0 0 20px rgba(217, 70, 239, 0.15);
+            background: rgba(217, 70, 239, 0.05);
+        }
+
+        .upload-card input[type="file"] {
+            display: none;
+        }
+
+        .upload-card * {
+            pointer-events: none;
+        }
+
+        .upload-icon {
+            font-size: 2.2rem;
+            margin-bottom: 0.75rem;
+            display: inline-block;
+            transition: transform 0.3s ease;
+        }
+
+        .upload-card:hover .upload-icon {
+            transform: translateY(-4px);
+        }
+
+        .upload-card.image-card .upload-icon {
+            color: #a5b4fc;
+        }
+
+        .upload-card.video-card .upload-icon {
+            color: #f5d0fe;
+        }
+
+        .upload-title {
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+            color: #fff;
+        }
+
+        .upload-desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .upload-btn {
+            margin-top: 1rem;
+            padding: 0.5rem 1.25rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .upload-card.image-card:hover .upload-btn {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .upload-card.video-card:hover .upload-btn {
+            background: var(--secondary);
+            border-color: var(--secondary);
+        }
+
+        /* Results & Panel States */
+        .right-panel {
+            min-height: 500px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .idle-state {
+            margin: auto;
+            text-align: center;
+            max-width: 480px;
+            padding: 2rem;
+        }
+
+        .idle-icon {
+            width: 80px;
+            height: 80px;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            color: var(--primary);
+            background: rgba(99, 102, 241, 0.05);
+            font-size: 2rem;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.05) inset;
+        }
+
+        .idle-state h3 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #fff;
+        }
+
+        .idle-state p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        /* Scanning / Loading Log State */
+        .scanning-state {
+            display: none;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .scan-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .scanner-bar {
+            height: 3px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .scanner-bar::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 40%;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            animation: scan 1.8s infinite linear;
+        }
+
+        .forensics-log {
+            background: #03060f;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            padding: 1.25rem;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: #10b981; /* Terminal Green */
+            height: 250px;
+            overflow-y: auto;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+        }
+
+        .log-entry {
+            margin-bottom: 0.25rem;
+            opacity: 0;
+            transform: translateY(4px);
+            animation: fadeUpIn 0.3s forwards ease;
+        }
+
+        .log-time {
+            color: #6366f1;
+        }
+
+        .log-warn {
+            color: var(--warning);
+        }
+
+        .log-success {
+            color: var(--success);
+        }
+
+        /* Report State / Complete State */
+        .results-state {
+            display: none;
+            flex-direction: column;
+            gap: 2rem;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .results-top-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Responsive vertical collapse when panel space is restricted */
+        @media (min-width: 1025px) and (max-width: 1300px) {
+            .results-top-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .results-top-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .verdict-card {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 1.25rem 1.5rem;
+            border-radius: 12px;
+            height: 100%;
+        }
+
+        @media (max-width: 480px) {
+            .verdict-card {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+
+        .feed-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 1rem 1.25rem;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            height: 100%;
+        }
+
+        .feed-preview-container {
+            width: 100%;
+            height: 180px;
+            background: #03060f;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .feed-preview-container img, .feed-preview-container video {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .upload-card.disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            pointer-events: none;
+            border-color: rgba(255, 255, 255, 0.03) !important;
+        }
+
+        .upload-card.disabled .upload-btn {
+            background: rgba(255, 255, 255, 0.02);
+            color: var(--text-dark);
+            cursor: not-allowed;
+            border-color: transparent;
+        }
+
+        /* Circular Progress Gauge */
+        .gauge-wrapper {
+            position: relative;
+            width: 100px;
+            height: 100px;
+        }
+
+        .gauge-svg {
+            transform: rotate(-90deg);
+        }
+
+        .gauge-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.05);
+            stroke-width: 8;
+        }
+
+        .gauge-fill {
+            fill: none;
+            stroke: var(--primary);
+            stroke-width: 8;
+            stroke-dasharray: 251.2;
+            stroke-dashoffset: 251.2; /* Animates dynamically */
+            stroke-linecap: round;
+            transition: stroke-dashoffset 1s ease-in-out, stroke 1s ease;
+        }
+
+        .gauge-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .verdict-details h2 {
+            font-size: 1.6rem;
+            font-weight: 800;
+            margin-bottom: 0.25rem;
+            letter-spacing: 0.5px;
+        }
+
+        .verdict-details p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .verdict-badge {
+            padding: 0.5rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-align: center;
+        }
+
+        .verdict-badge.fake {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--danger);
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.1);
+        }
+
+        .verdict-badge.real {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: var(--success);
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
+        }
+
+        /* Tab Layout */
+        .tabs-header {
+            display: flex;
+            gap: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 1px;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            padding: 0.75rem 1.25rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 8px 8px 0 0;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .tab-content {
+            display: none;
+            padding: 1.5rem 0 0;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Tab Content Styles */
+        /* Tab 1: Keyframe suspicious frames list */
+        .suspicious-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .suspicious-item {
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            overflow: hidden;
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .suspicious-item:hover {
+            transform: translateY(-2px);
+            border-color: rgba(99, 102, 241, 0.25);
+        }
+
+        .frame-header {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.8rem;
+            font-weight: 700;
+            background: rgba(0, 0, 0, 0.2);
+            display: flex;
+            justify-content: space-between;
+            color: var(--text-muted);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .frame-header span.alert {
+            color: var(--danger);
+        }
+
+        .comparison-view {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1;
+            overflow: hidden;
+            background: #000;
+            cursor: crosshair;
+        }
+
+        .comparison-view img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .comparison-view .overlay-img {
+            opacity: 0;
+            z-index: 2;
+        }
+
+        .comparison-view:hover .overlay-img {
+            opacity: 1;
+        }
+
+        .view-instruction {
+            font-size: 0.75rem;
+            color: var(--text-dark);
+            text-align: center;
+            padding: 0.5rem;
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        /* Tab 2: Integrated Gradients */
+        .ig-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        @media (max-width: 768px) {
+            .ig-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .ig-image-wrapper {
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            aspect-ratio: 1;
+        }
+
+        .ig-image-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .ig-desc {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .ig-desc h4 {
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .ig-desc p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        .badge-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .tag-badge {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            color: #a5b4fc;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        /* Tab 3: Attention Weight Chart */
+        .chart-container {
+            background: rgba(3, 6, 15, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 1.5rem;
+            position: relative;
+            height: 320px;
+        }
+
+        /* Tab 4: Composite Report */
+        .composite-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        .composite-image-wrapper {
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            max-width: 100%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        .composite-image-wrapper img {
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: #fff;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 15px var(--primary-glow);
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px var(--primary-glow);
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; filter: drop-shadow(0 0 4px currentColor); }
+        }
+
+        @keyframes scan {
+            0% { left: -40%; }
+            100% { left: 100%; }
+        }
+
+        @keyframes fadeUpIn {
+            0% { opacity: 0; transform: translateY(8px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-container">
+            <div class="logo-group">
+                <div class="logo-icon">Æ</div>
+                <div class="brand-title">AURA</div>
+            </div>
+            
+            {% if model_loaded %}
+            <div class="status-badge">
+                <div class="status-dot"></div>
+                RADAR ONLINE ({{ device|upper }})
+            </div>
+            {% else %}
+            <div class="status-badge offline">
+                <div class="status-dot"></div>
+                RADAR OFFLINE (NO CHECKPOINT)
+            </div>
+            {% endif %}
+        </div>
+    </header>
+
+    <main>
+        {% if not model_loaded %}
+        <div class="card warning-banner" style="border-color: var(--danger); background: rgba(239, 68, 68, 0.08); margin-bottom: 2rem; display: flex; align-items: center; gap: 1.5rem; padding: 1.5rem; border-radius: 12px; backdrop-filter: blur(10px);">
+            <div class="warning-icon" style="font-size: 2.2rem; color: var(--danger); user-select: none;">⚠️</div>
+            <div class="warning-text">
+                <h3 style="color: #fff; margin-bottom: 0.25rem; font-weight: 700; font-size: 1.15rem; letter-spacing: 1px;">SYSTEM ALERT: CHECKPOINT MISSING</h3>
+                <p style="color: var(--text-muted); font-size: 0.88rem; line-height: 1.5;">
+                    The deepfake detector requires the model checkpoint file <code>checkpoints/best_model.pth</code> to run predictions. 
+                    Please place your trained model checkpoint in the <code>checkpoints/</code> directory and restart the web server to calibrate the system.
+                </p>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="dashboard-grid">
+            
+            <!-- Left Side: Upload Control Panel -->
+            <div class="upload-section-wrapper">
+                
+                <div class="card">
+                    <div class="panel-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                        Forensic Image Analysis
+                    </div>
+                    
+                    <div class="upload-card image-card {% if not model_loaded %}disabled{% endif %}" id="imageDropZone">
+                        <span class="upload-icon">📸</span>
+                        <div class="upload-title">Scan Single Image</div>
+                        <div class="upload-desc">Drag & drop or browse</div>
+                        <div class="upload-desc" style="font-size: 0.75rem; margin-top: 0.25rem;">PNG, JPG, JPEG</div>
+                        <input type="file" id="imageInput" accept=".png, .jpg, .jpeg" {% if not model_loaded %}disabled{% endif %}>
+                        <button class="upload-btn" {% if not model_loaded %}disabled{% endif %}>Select Image</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="panel-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                        Forensic Video Analysis
+                    </div>
+                    
+                    <div class="upload-card video-card {% if not model_loaded %}disabled{% endif %}" id="videoDropZone">
+                        <span class="upload-icon">🎥</span>
+                        <div class="upload-title">Scan Video Sequence</div>
+                        <div class="upload-desc">Drag & drop or browse</div>
+                        <div class="upload-desc" style="font-size: 0.75rem; margin-top: 0.25rem;">MP4, AVI, MOV (Seq: 20 Frames)</div>
+                        <input type="file" id="videoInput" accept=".mp4, .avi, .mov" {% if not model_loaded %}disabled{% endif %}>
+                        <button class="upload-btn" {% if not model_loaded %}disabled{% endif %}>Select Video</button>
+                    </div>
+                </div>
+                
+                <!-- Quick Info Panel -->
+                <div class="card" style="padding: 1.25rem;">
+                    <div class="panel-title" style="font-size: 0.95rem; margin-bottom: 0.75rem; padding-bottom: 0.5rem;">Forensic Pipeline</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; display: flex; flex-direction: column; gap: 0.5rem;">
+                        <div>• <strong>MTCNN:</strong> Automatically isolates high-confidence face crops.</div>
+                        <div>• <strong>Fourier Spectrum (FFT):</strong> Scans frequency maps for GAN/diffusion artifacts.</div>
+                        <div>• <strong>EfficientNet-B4 + BiLSTM:</strong> Captures spatio-temporal inconsistencies across sequence frames.</div>
+                        <div>• <strong>Dual-Stream XAI:</strong> GradCAM highlights spatial attention while Integrated Gradients extracts boundary anomalies.</div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Side: Forensic Report Panel -->
+            <div class="card right-panel">
+                
+                <!-- Idle State -->
+                <div class="idle-state" id="idleState">
+                    <div class="idle-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </div>
+                    <h3>SYSTEM IDLE</h3>
+                    <p>Radar is calibrated and waiting for payload injection. Upload an image or video sequence on the left to initiate forensic sequence analysis.</p>
+                </div>
+
+                <!-- Scanning Loading State -->
+                <div class="scanning-state" id="scanningState">
+                    <div class="scan-header">
+                        <h3 style="font-weight: 700; letter-spacing: 1px; color: #fff;">ANALYZING PAYLOAD...</h3>
+                        <span id="scanPercent" style="font-family: 'JetBrains Mono', monospace; color: var(--primary); font-weight: bold;">0%</span>
+                    </div>
+                    <div class="scanner-bar"></div>
+                    <div class="forensics-log" id="forensicsLog">
+                        <!-- Entries added dynamically -->
+                    </div>
+                </div>
+
+                <!-- Complete Results State -->
+                <div class="results-state" id="resultsState">
+                    
+                    <div class="results-top-section">
+                        <!-- Verdict Card -->
+                        <div class="card verdict-card">
+                            <div class="gauge-wrapper">
+                                <svg class="gauge-svg" width="100" height="100">
+                                    <circle class="gauge-bg" cx="50" cy="50" r="40"></circle>
+                                    <circle class="gauge-fill" id="gaugeCircle" cx="50" cy="50" r="40"></circle>
+                                </svg>
+                                <div class="gauge-text" id="gaugeText">0%</div>
+                            </div>
+                            
+                            <div class="verdict-details">
+                                <h2 id="verdictHeadline">SUSPICIOUS FRAME SEQUENCE</h2>
+                                <p id="fileDetailLabel">Payload: sample_file.mp4 (Type: Video)</p>
+                            </div>
+                            
+                            <div class="verdict-badge" id="verdictBadge">DEEPFAKE</div>
+                        </div>
+
+                        <!-- Payload Feed Card -->
+                        <div class="card feed-card">
+                            <div class="panel-title" style="font-size: 0.9rem; margin-bottom: 0.4rem; padding-bottom: 0.25rem; border-bottom: 1px solid rgba(255,255,255,0.03);">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                                Payload Feed
+                            </div>
+                            <div class="feed-preview-container">
+                                <img id="feedPreviewImage" style="display: none;" src="" alt="Payload Preview">
+                                <video id="feedPreviewVideo" style="display: none;" controls muted loop></video>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Visualizations Tabs -->
+                    <div>
+                        <div class="tabs-header">
+                            <button class="tab-btn active" onclick="switchTab('suspicious-frames')">Suspicious Frames</button>
+                            <button class="tab-btn" onclick="switchTab('ig-attribution')">Pixel Saliency (IG)</button>
+                            <button class="tab-btn" id="attentionTabBtn" onclick="switchTab('attention-distribution')">Attention Weights</button>
+                            <button class="tab-btn" onclick="switchTab('composite-report')">Composite Report</button>
+                        </div>
+
+                        <!-- Tab 1: Suspicious Frames -->
+                        <div class="tab-content active" id="tab-suspicious-frames">
+                            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+                                Below are the top 3 frames that triggered the highest neural network activations. <strong>Hover cursor over each crop to project the GradCAM spatial attention heatmap.</strong>
+                            </p>
+                            <div class="suspicious-grid" id="suspiciousGrid">
+                                <!-- Cards injected dynamically -->
+                            </div>
+                        </div>
+
+                        <!-- Tab 2: Integrated Gradients -->
+                        <div class="tab-content" id="tab-ig-attribution">
+                            <div class="ig-container">
+                                <div class="ig-image-wrapper">
+                                    <img id="igAttributionImage" src="" alt="Integrated Gradients Saliency Map">
+                                </div>
+                                <div class="ig-desc">
+                                    <h4>Integrated Gradients Map</h4>
+                                    <p>
+                                        Integrated Gradients computes pixel-level attribution to trace decision bounds back to specific features. Bright hot pixels represent areas where anomalous spatial boundaries or high-frequency manipulation borders were detected (e.g., around nose bridge, lips, eyes, or artificial blending borders).
+                                    </p>
+                                    <div class="badge-list">
+                                        <span class="tag-badge">Sub-pixel edges</span>
+                                        <span class="tag-badge">Blending artifact scans</span>
+                                        <span class="tag-badge">Dual-stream attribution</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tab 3: Attention Weights Chart -->
+                        <div class="tab-content" id="tab-attention-distribution">
+                            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+                                Temporal attention curve mapping weights computed by the BiLSTM recurrence layer. Peak nodes represent key points of facial morphing or blending inconsistencies.
+                            </p>
+                            <div class="chart-container">
+                                <canvas id="attentionChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Tab 4: Composite Report -->
+                        <div class="tab-content" id="tab-composite-report">
+                            <div class="composite-container">
+                                <p style="font-size: 0.85rem; color: var(--text-muted); text-align: center;">
+                                    Download or export the fully compiled multi-tier explanation sheet generated by the radar engine.
+                                </p>
+                                <div class="composite-image-wrapper">
+                                    <img id="compositeReportImage" src="" alt="Composite Report Visualization">
+                                </div>
+                                <a id="downloadReportLink" href="#" download="forensic_report.png" class="btn-primary">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    Download Composite Report
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        let attentionChart = null;
+
+        // Add file input listners
+        document.getElementById('imageInput').addEventListener('change', (e) => {
+            if(e.target.files.length > 0) handlePayloadUpload(e.target.files[0]);
+        });
+        document.getElementById('videoInput').addEventListener('change', (e) => {
+            if(e.target.files.length > 0) handlePayloadUpload(e.target.files[0]);
+        });
+
+        // Set up Drag & Drop for Image
+        setupDragAndDrop('imageDropZone', 'imageInput');
+        // Set up Drag & Drop for Video
+        setupDragAndDrop('videoDropZone', 'videoInput');
+
+        function setupDragAndDrop(zoneId, inputId) {
+            const zone = document.getElementById(zoneId);
+            const input = document.getElementById(inputId);
+
+            zone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                zone.classList.add('dragover');
+            });
+
+            zone.addEventListener('dragleave', () => {
+                zone.classList.remove('dragover');
+            });
+
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                zone.classList.remove('dragover');
+                if (e.dataTransfer.files.length > 0) {
+                    input.files = e.dataTransfer.files;
+                    handlePayloadUpload(e.dataTransfer.files[0]);
+                }
+            });
+            
+            zone.addEventListener('click', () => {
+                input.click();
+            });
+        }
+
+        // Upload and handle prediction
+        async function handlePayloadUpload(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Change UI state to scanning
+            setPanelState('scanning');
+            
+            // Clean logger
+            const logBox = document.getElementById('forensicsLog');
+            logBox.innerHTML = '';
+            
+            // Detect media type
+            const isVideo = file.type.startsWith('video/') || file.name.endsWith('.mp4') || file.name.endsWith('.avi') || file.name.endsWith('.mov');
+            
+            // Set up local payload preview
+            const previewImg = document.getElementById('feedPreviewImage');
+            const previewVid = document.getElementById('feedPreviewVideo');
+            
+            // Revoke old object URLs to prevent memory leaks
+            if (previewImg.src && previewImg.src.startsWith('blob:')) {
+                URL.revokeObjectURL(previewImg.src);
+            }
+            if (previewVid.src && previewVid.src.startsWith('blob:')) {
+                URL.revokeObjectURL(previewVid.src);
+            }
+            
+            const objectURL = URL.createObjectURL(file);
+            if (isVideo) {
+                previewImg.style.display = 'none';
+                previewImg.src = '';
+                previewVid.src = objectURL;
+                previewVid.style.display = 'block';
+                previewVid.play().catch(err => console.log("Video auto-play blocked:", err));
+            } else {
+                previewVid.style.display = 'none';
+                previewVid.src = '';
+                previewImg.src = objectURL;
+                previewImg.style.display = 'block';
+            }
+            
+            // Start local mock pipeline progress log increments (context-aware)
+            const logStages = isVideo ? [
+                { time: 0.1, msg: "[STAGE 01] Initializing video sequence parser and checking payload...", type: 'info' },
+                { time: 0.6, msg: "[STAGE 02] Running face detector (MTCNN) to align face crops...", type: 'info' },
+                { time: 1.2, msg: "[STAGE 02] MTCNN: Localized facial boundaries across sequence frames...", type: 'success' },
+                { time: 1.8, msg: "[STAGE 03] Extracting frame features using spatial network (EfficientNet)...", type: 'info' },
+                { time: 2.5, msg: "[STAGE 03] Feature map computation completed. Preparing temporal blocks...", type: 'info' },
+                { time: 3.2, msg: "[STAGE 04] Running Fast Fourier Transform (FFT) analysis on sequence crops...", type: 'info' },
+                { time: 4.0, msg: "[STAGE 04] FFT: Isolated synthetic periodic boundary noise in frequency spectrum.", type: 'warn' },
+                { time: 4.8, msg: "[STAGE 05] Feeding 10-frame sequence vectors to recurrent BiLSTM classifier...", type: 'info' },
+                { time: 5.8, msg: "[STAGE 05] Computing cross-frame temporal attention layers...", type: 'info' },
+                { time: 6.8, msg: "[STAGE 06] Generating GradCAM spatial overlays on peak attended frames...", type: 'info' },
+                { time: 7.8, msg: "[STAGE 06] Calculating pixel-level attribution using Integrated Gradients...", type: 'info' },
+                { time: 8.8, msg: "[STAGE 07] Consolidating forensic report parameters...", type: 'success' }
+            ] : [
+                { time: 0.1, msg: "[STAGE 01] Initializing image parser and reading static payload...", type: 'info' },
+                { time: 0.7, msg: "[STAGE 02] Running face detection (MTCNN) to isolate primary face crop...", type: 'info' },
+                { time: 1.5, msg: "[STAGE 02] MTCNN: High-confidence face region localized. Cropping face area...", type: 'success' },
+                { time: 2.3, msg: "[STAGE 03] Extracting structural features via spatial network (EfficientNet)...", type: 'info' },
+                { time: 3.2, msg: "[STAGE 04] Running FFT spectral frequency scanning for synthetic patterns...", type: 'info' },
+                { time: 4.2, msg: "[STAGE 04] FFT: Finished scanning frequency spectrum.", type: 'success' },
+                { time: 5.2, msg: "[STAGE 05] Static image payload detected. Bypassing BiLSTM sequence model...", type: 'warn' },
+                { time: 6.2, msg: "[STAGE 06] Generating spatial attention heatmaps using GradCAM...", type: 'info' },
+                { time: 7.4, msg: "[STAGE 06] Running Integrated Gradients pixel saliency calculation (50 steps)...", type: 'info' },
+                { time: 8.6, msg: "[STAGE 07] Consolidating diagnostic report parameters...", type: 'success' }
+            ];
+
+            let logIndex = 0;
+            const logInterval = setInterval(() => {
+                if (logIndex < logStages.length) {
+                    addLogEntry(logStages[logIndex].time, logStages[logIndex].msg, logStages[logIndex].type);
+                    // Update progress text
+                    const percent = Math.min(Math.round(((logIndex + 1) / logStages.length) * 95), 98);
+                    document.getElementById('scanPercent').innerText = percent + '%';
+                    logIndex++;
+                } else {
+                    clearInterval(logInterval);
+                }
+            }, 650);
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                // Clear the logging timer, dump remaining logs instantly, then show results
+                clearInterval(logInterval);
+                document.getElementById('scanPercent').innerText = '100%';
+                
+                if (data.error) {
+                    alert(`Error: ${data.error}`);
+                    setPanelState('idle');
+                    return;
+                }
+                
+                displayResults(data);
+                
+            } catch (error) {
+                clearInterval(logInterval);
+                console.error("Payload analysis failed:", error);
+                alert("Analyst warning: Server failed to execute inference command.");
+                setPanelState('idle');
+            } finally {
+                // Reset file input values so uploading the same file again triggers change event
+                document.getElementById('imageInput').value = '';
+                document.getElementById('videoInput').value = '';
+            }
+        }
+
+        function addLogEntry(time, msg, type) {
+            const logBox = document.getElementById('forensicsLog');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            
+            let classColor = '';
+            if (type === 'warn') classColor = 'log-warn';
+            if (type === 'success') classColor = 'log-success';
+
+            entry.innerHTML = `<span class="log-time">[+${time.toFixed(1)}s]</span> <span class="${classColor}">${escapeHtml(msg)}</span>`;
+            logBox.appendChild(entry);
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        function setPanelState(state) {
+            const idle = document.getElementById('idleState');
+            const scanning = document.getElementById('scanningState');
+            const results = document.getElementById('resultsState');
+
+            idle.style.display = 'none';
+            scanning.style.display = 'none';
+            results.style.display = 'none';
+
+            if (state === 'idle') idle.style.display = 'block';
+            if (state === 'scanning') scanning.style.display = 'flex';
+            if (state === 'results') results.style.display = 'flex';
+        }
+
+        function displayResults(data) {
+            setPanelState('results');
+
+            // 1. Verdict gauge update
+            const prob = data.prediction;
+            const percent = Math.round(prob * 100);
+            
+            const gaugeText = document.getElementById('gaugeText');
+            const gaugeCircle = document.getElementById('gaugeCircle');
+            
+            gaugeText.innerText = percent + '%';
+            
+            // Set circle progress (Radius is 40, Circumference is 2*PI*40 = 251.2)
+            const offset = 251.2 - (prob * 251.2);
+            gaugeCircle.style.strokeDashoffset = offset;
+            
+            // Set color based on backend classification
+            let color = 'var(--success)';
+            let badgeText = data.label; // e.g. REAL, UNCERTAIN, FAKE
+            let badgeClass = 'real';
+            let headline = 'AUTHENTIC MEDIA VERIFIED';
+
+            if (data.label === 'FAKE') {
+                color = 'var(--danger)';
+                badgeText = 'DEEPFAKE';
+                badgeClass = 'fake';
+                headline = 'DEEPFAKE DETECTED';
+            } else if (data.label === 'UNCERTAIN') {
+                color = 'var(--warning)';
+                badgeText = 'UNCERTAIN';
+                badgeClass = 'fake';
+                headline = 'SUSPICIOUS ANOMALIES';
+            } else if (data.label === 'REAL') {
+                color = 'var(--success)';
+                badgeText = 'REAL';
+                badgeClass = 'real';
+                headline = 'AUTHENTIC MEDIA VERIFIED';
+            }
+            
+            gaugeCircle.style.stroke = color;
+            
+            // Verdict text
+            const badge = document.getElementById('verdictBadge');
+            badge.innerText = badgeText;
+            badge.className = `verdict-badge ${badgeClass}`;
+            
+            document.getElementById('verdictHeadline').innerText = headline;
+            document.getElementById('verdictHeadline').style.color = (data.label === 'FAKE') ? 'var(--danger)' : (data.label === 'UNCERTAIN' ? 'var(--warning)' : 'var(--success)');
+            
+            // Show engine device used
+            const deviceText = data.device ? `Engine: ${data.device.toUpperCase()}` : '';
+            document.getElementById('fileDetailLabel').innerText = `Payload: ${data.filename} (${data.confidence}) | ${deviceText}`;
+
+            // 2. Tab 1: Ingest Suspicious Frames
+            const grid = document.getElementById('suspiciousGrid');
+            grid.innerHTML = '';
+            
+            if (data.suspicious_details && data.suspicious_details.length > 0) {
+                data.suspicious_details.forEach(item => {
+                    const attnText = item.attention_weight !== undefined ? `Attn: ${(item.attention_weight * 100).toFixed(1)}%` : 'ATTN PEAK';
+                    const card = document.createElement('div');
+                    card.className = 'suspicious-item';
+                    card.innerHTML = `
+                        <div class="frame-header">
+                            <span>Frame #${item.index}</span>
+                            <span class="alert">${attnText}</span>
+                        </div>
+                        <div class="comparison-view">
+                            <img src="${item.crop_url}" alt="Original Crop" class="base-img">
+                            <img src="${item.overlay_url}" alt="GradCAM Heatmap Overlay" class="overlay-img">
+                        </div>
+                        <div class="view-instruction">Hover to project GradCAM</div>
+                    `;
+                    grid.appendChild(card);
+                });
+            } else {
+                grid.innerHTML = `<div style="grid-column: span 3; text-align: center; color: var(--text-dark); padding: 2rem;">No suspicious sub-frames localized.</div>`;
+            }
+
+            // 3. Tab 2: Integrated Gradients attribution
+            const igImg = document.getElementById('igAttributionImage');
+            if (data.ig_attribution_url) {
+                igImg.src = data.ig_attribution_url;
+                igImg.style.display = 'block';
+            } else {
+                igImg.style.display = 'none';
+            }
+
+            // 4. Tab 3: Attention chart update
+            const attnTabBtn = document.getElementById('attentionTabBtn');
+            if (data.file_type === 'video' && data.attention_weights) {
+                attnTabBtn.style.display = 'block';
+                renderAttentionChart(data.attention_weights);
+            } else {
+                // If it is an image, hide attention weights tab and destroy old chart to save memory
+                attnTabBtn.style.display = 'none';
+                if (attentionChart) {
+                    attentionChart.destroy();
+                    attentionChart = null;
+                }
+            }
+
+            // 5. Tab 4: Composite Report Visualization
+            const reportImg = document.getElementById('compositeReportImage');
+            const downloadLink = document.getElementById('downloadReportLink');
+            if (data.visualization_url) {
+                reportImg.src = data.visualization_url;
+                downloadLink.href = data.visualization_url;
+                downloadLink.style.display = 'inline-flex';
+            } else {
+                downloadLink.style.display = 'none';
+            }
+
+            // Reset tab navigation back to suspicious frames
+            switchTab('suspicious-frames');
+        }
+
+        function switchTab(tabName) {
+            // Remove active classes
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            // Find current button and tab
+            const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(btn => btn.getAttribute('onclick').includes(tabName));
+            if (activeBtn) activeBtn.classList.add('active');
+
+            const activeContent = document.getElementById(`tab-${tabName}`);
+            if (activeContent) activeContent.classList.add('active');
+        }
+
+        function renderAttentionChart(weights) {
+            const ctx = document.getElementById('attentionChart').getContext('2d');
+            
+            // Destroy previous chart instance if exists
+            if (attentionChart) {
+                attentionChart.destroy();
+            }
+
+            const labels = weights.map((_, i) => `F-${i}`);
+            
+            // Highlight top peaks
+            const topIndices = [...weights.keys()]
+                .sort((a, b) => weights[b] - weights[a])
+                .slice(0, 3);
+
+            const pointBackgroundColors = weights.map((_, i) => 
+                topIndices.includes(i) ? '#ef4444' : '#6366f1'
+            );
+            
+            const pointRadius = weights.map((_, i) => 
+                topIndices.includes(i) ? 6 : 3
+            );
+
+            attentionChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Temporal Recurrence Attention Weight',
+                        data: weights,
+                        borderColor: '#6366f1',
+                        borderWidth: 2,
+                        backgroundColor: 'rgba(99, 102, 241, 0.15)',
+                        fill: true,
+                        tension: 0.3,
+                        pointBackgroundColor: pointBackgroundColors,
+                        pointBorderColor: '#fff',
+                        pointRadius: pointRadius,
+                        pointHoverRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#9ca3af', font: { family: 'Outfit' } },
+                            min: 0
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#9ca3af', font: { family: 'Outfit' } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.innerText = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
